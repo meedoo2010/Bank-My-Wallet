@@ -1,0 +1,4 @@
+flet
+firebase-admin
+python-dotenv
+flet-video
