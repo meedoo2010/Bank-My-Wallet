@@ -584,7 +584,9 @@ def main(page: Page):
                                             PopupMenuItem(text="Who are we", on_click=lambda _:page.go("who_are_we")),
                                             PopupMenuItem(),
                                             PopupMenuItem(text="Support",on_click=lambda _:page.go("support")),                       
-                                            PopupMenuItem()
+                                            PopupMenuItem(),
+                                            PopupMenuItem(text="Create cart",on_click=lambda _:page.go("visa")),
+                                            
                                             
 
                                         ]
