@@ -11,8 +11,10 @@ import time
 import webbrowser
 import firebase_admin
 from firebase_admin import credentials, db
-import os
+import requests
+import tempfile
 
+DB_URL = "https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/bank_my_wallet.json"
 
 
 
@@ -33,12 +35,13 @@ class Saver:
         return self.data.get(key, default)
 
 
-cred = credentials.Certificate("serviceAccountKey.json")
 
-# 2- نبدأ التطبيق
-firebase_admin.initialize_app(cred, {
-    "databaseURL": "https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/"
-})
+#cred = credentials.Certificate("serviceAccountKey.json")
+#
+## 2- نبدأ التطبيق
+#firebase_admin.initialize_app(cred, {
+#    "databaseURL": "https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#})
 
 
 
@@ -64,10 +67,14 @@ def send_email(to: str, subject: str, body: str):
 
 
 def main(page: Page):
-    page.theme_mode = ThemeMode.SYSTEM
+    page.title = "Bank My Wallet"
+    page.window.width = 390
+    page.window.height = 740
+    page.window.top = 45
+    page.window.left = 570
+    page.theme_mode = ThemeMode.LIGHT
     page.scroll = 'auto'
     saver = Saver(page)
-    
     saved_theme = saver.get("theme")
     if saved_theme == "dark":
         page.theme_mode = ThemeMode.DARK
@@ -75,7 +82,7 @@ def main(page: Page):
 
 
     def add1(e):
-    # 1) فحص الخانات الفاضية
+        # 1) فحص الخانات الفاضية
         fields = [
             signup_name.value,
             signup_email.value,
@@ -145,16 +152,36 @@ def main(page: Page):
             page.update()
             return
 
-        # 5) إضافة البيانات في Firebase
-        ref = db.reference("bank_my_wallet")
-        ref.push({
+        # 5) إرسال البيانات للـ Firebase عبر requests
+        payload = {
             "name": signup_name.value,
             "phone": signup_phone.value,
             "email": signup_email.value,
             "password1": signup_pass.value,
             "password2": signup_confirm.value,
             "address": signup_address.value
-        })
+        }
+
+        try:
+            r = requests.post(DB_URL, json=payload)
+            if r.status_code != 200:
+                raise Exception(f"Failed to save user. Status code: {r.status_code}")
+        except Exception as ex:
+            def close_dialog(ev):
+                alert.open = False
+                page.update()
+            alert = AlertDialog(
+                title=Text("Error saving data"),
+                content=Text(str(ex)),
+                actions=[TextButton("Ok", on_click=close_dialog)],
+                actions_alignment=MainAxisAlignment.END,
+            )
+            page.overlay.append(alert)
+            alert.open = True
+            page.update()
+            return
+
+        # بعد الإضافة
         page.go("visa")
         page.update()
 
@@ -180,7 +207,7 @@ def main(page: Page):
                            center_title=True,
                            bgcolor=Colors.BLACK,
                            color='#E8D04A',
-                           actions=[IconButton(Icons.SETTINGS,on_click=lambda _: page.go("visa"))]
+                           actions=[IconButton(Icons.SETTINGS,on_click=lambda _: page.go("setting"))]
                            ),
                     Row([
                         Image(src="register1.gif", width=280),
@@ -220,10 +247,9 @@ def main(page: Page):
             page.update()
         
         def user_found(e):
-            # خذ قيم الحقول وتأكد من وجودها
             email_val = (email_field.value or "").strip()
             pass_val = (password_field.value or "").strip()
-        
+
             if email_val == "" or pass_val == "":
                 alert = AlertDialog(
                     title=Text("Please enter email and password"),
@@ -234,15 +260,15 @@ def main(page: Page):
                 alert.open = True
                 page.update()
                 return
-        
-            # قراءة البيانات من Firebase (مع التعامل لو مفيش اتصال أو خطأ)
+
             try:
-                ref = db.reference("bank_my_wallet")
-                users = ref.get()  # ممكن يرجع dict أو None
+                r = requests.get(DB_URL)
+                if r.status_code != 200:
+                    raise Exception(f"Firebase returned status code {r.status_code}")
+                users = r.json()
             except Exception as ex:
-                # عرض رسالة خطأ لو في مشكلة اتصال مع Firebase
                 alert = AlertDialog(
-                    title=Text("Connection error to Servier"),
+                    title=Text("Connection error to server"),
                     content=Text(str(ex)),
                     actions=[TextButton("Ok", on_click=lambda _: close_alert(alert))],
                     actions_alignment=MainAxisAlignment.END
@@ -251,12 +277,10 @@ def main(page: Page):
                 alert.open = True
                 page.update()
                 return
-        
+
             found = False
-        
             if users and isinstance(users, dict):
                 for uid, data in users.items():
-                    # حماية إذا كانت قيمة data مش dict
                     if not isinstance(data, dict):
                         continue
                     if data.get("email") == email_val and data.get("password1") == pass_val:
@@ -265,7 +289,7 @@ def main(page: Page):
                         page.go("main1")
                         page.update()
                         break
-                    
+
             if not found:
                 alert = AlertDialog(
                     title=Text("Your Email or password is wrong"),
@@ -320,8 +344,42 @@ def main(page: Page):
             signup_phone = TextField(label="Phone number")
             signup_pass = TextField(label="Password", password=True, can_reveal_password=True)
             signup_confirm = TextField(label="Confirm password", password=True, can_reveal_password=True)
-            signup_OTP = TextField(label="Enter OTP",width=175,max_length=6)
-            signup_address = TextField(label="Address")
+            signup_OTP = TextField(label="Enter OTP",width=175,max_length=6,keyboard_type=KeyboardType.NUMBER)
+            signup_address = TextField(label="Address", width=170)
+            options=[
+                DropdownOption("Cairo"),
+                DropdownOption("Giza"),
+                DropdownOption("Alexandria"),
+                DropdownOption("Dakahlia"),
+                DropdownOption("Red Sea"),
+                DropdownOption("Beheira"),
+                DropdownOption("Fayoum"),
+                DropdownOption("Gharbia"),
+                DropdownOption("Ismailia"),
+                DropdownOption("Menoufia"),
+                DropdownOption("Minya"),
+                DropdownOption("Qalyubia"),
+                DropdownOption("New Valley"),
+                DropdownOption("Suez"),
+                DropdownOption("Aswan"),
+                DropdownOption("Assiut"),
+                DropdownOption("Beni Suef"),
+                DropdownOption("Port Said"),
+                DropdownOption("Damietta"),
+                DropdownOption("Sharkia"),
+                DropdownOption("South Sinai"),
+                DropdownOption("Kafr El Sheikh"),
+                DropdownOption("Matrouh"),
+                DropdownOption("Luxor"),
+                DropdownOption("Qena"),
+                DropdownOption("North Sinai"),
+                DropdownOption("Sohag")
+            ]
+            signup_governorate = Dropdown(
+                label="Choose the governorate",
+                options=options
+            )
+            
 
             # زر إرسال الكود
             def send_otp_click(e):
@@ -389,6 +447,7 @@ def main(page: Page):
             )
             
             
+            
 
         
             page.views.append(
@@ -403,7 +462,8 @@ def main(page: Page):
                         signup_phone,
                         signup_pass,
                         signup_confirm,
-                        signup_address,
+                        Row([signup_address, signup_governorate]),
+                        
                         
                         
                         
@@ -445,107 +505,93 @@ def main(page: Page):
            )
          #صفحة الرئيسية (1) 
         if page.route == "main1":
-            card1 = Card(
-    elevation=8,
-    content=Container(
-        width=360,
-        height=210,
-        border_radius=20,
-        padding=0,
-        gradient=LinearGradient(
-            begin=alignment.top_left,
-            end=alignment.bottom_right,
-            colors=[Colors.BLUE_600, Colors.BLUE_900],
-        ),
-        content=Stack(
-            controls=[
+            current_email = saver.get("current_user_email")
+            card_data = None
 
-                # الكلمة اللي فوق خالص
-                Text(
-                    "My Wallet Card",
-                    size=16,
-                    weight="bold",
-                    color=Colors.WHITE,
-                    top=15,
-                    left=20
-                ),
+            if current_email:
+                try:
+                    url = "https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/cart_cvv_exp.json"
+                    r = requests.get(url)
+                    r.raise_for_status()
+                    cards = r.json()  # dict من Firebase
+                    if cards:
+                        for key, val in cards.items():
+                            if val.get("email") == current_email:
+                                card_data = val
+                                break
+                except Exception as e:
+                    alert = AlertDialog(
+                        title=Text("Error fetching card"),
+                        content=Text(str(e)),
+                        actions=[TextButton("Ok", on_click=lambda e: setattr(alert, "open", False))]
+                    )
+                    page.overlay.append(alert)
+                    alert.open = True
+                    page.update()
 
-                # رقم الفيزا في النص
-                Text(
-                    "5084 4574 4644 4974",
-                    size=26,
-                    weight="bold",
-                    color=Colors.WHITE,
-                    top=85,
-                    left=20
-                ),
-
-                # EXP تحت خالص يمين
-                Text(
-                    "EXP: 08/30",
-                    size=14,
-                    weight="bold",
-                    color=Colors.WHITE,
-                    bottom=20,
-                    right=20
-                ),
-
-                # CVV تحت خالص شمال
-                Text(
-                    "CVV: 565",
-                    size=14,
-                    weight="bold",
-                    color=Colors.WHITE,
-                    bottom=20,
-                    left=20
+            # إذا موجود الكارد للمستخدم
+            if card_data:
+                card1 = Card(
+                    elevation=8,
+                    content=Container(
+                        width=360,
+                        height=210,
+                        border_radius=20,
+                        padding=0,
+                        gradient=LinearGradient(
+                            begin=alignment.top_left,
+                            end=alignment.bottom_right,
+                            colors=[Colors.BLUE_600, Colors.BLUE_900],
+                        ),
+                        content=Stack(
+                            controls=[
+                                Text("My Wallet Card", size=16, weight="bold", color=Colors.WHITE, top=15, left=20),
+                                Text(card_data["cart"], size=26, weight="bold", color=Colors.WHITE, top=85, left=20),
+                                Text(f"EXP: {card_data['exp']}", size=14, weight="bold", color=Colors.WHITE, bottom=20, right=20),
+                                Text(f"CVV: {card_data['cvv']}", size=14, weight="bold", color=Colors.WHITE, bottom=20, left=20)
+                            ]
+                        )
+                    )
                 )
-            ]
-        )
-    )
-)
+            else:
+                # إذا لا يوجد كارد للمستخدم، يظهر فارغ أو نص توضيحي
+                card1 = Card(
+                    elevation=8,
+                    content=Container(
+                        width=360,
+                        height=210,
+                        border_radius=20,
+                        padding=0,
+                        gradient=LinearGradient(
+                            begin=alignment.top_left,
+                            end=alignment.bottom_right,
+                            colors=[Colors.BLUE_300, Colors.BLUE_600],
+                        ),
+                        content=Text("No card found. Go create one in 'Visa'", color=Colors.WHITE, size=20, text_align="center")
+                    )
+                )
 
-            mou = Row([card1 ], alignment=MainAxisAlignment.CENTER,)
-            
+            mou = Row([card1], alignment=MainAxisAlignment.CENTER)
             page.views.append(
                 View(
-                    "Bank My Wallet",
+                    "main1",
                     [
-                        AppBar(title=Text("Bank My Wallet"),
-                               center_title=True,
-                               bgcolor=Colors.BLACK,
-                               color=Colors.WHITE,
-                               leading=Container(),
-                               actions=[
-                                    PopupMenuButton(
-                                        items=[
-                                            PopupMenuItem(text="Profile",on_click=lambda _:page.go("profile")),
-                                            PopupMenuItem(text="Settings",on_click=lambda _: page.go("settings")),
-                                            PopupMenuItem(text="Who are we", on_click=lambda _:page.go("who_are_we")),
-                                            PopupMenuItem(),
-                                            PopupMenuItem(text="Support",on_click=lambda _:page.go("support")),                       
-                                            PopupMenuItem()
-                                            
-
-                                        ]
-                                 )
-                                    
-                            ]
-                               
-                               ),
+                        AppBar(title=Text("Bank My Wallet"), center_title=True, bgcolor=Colors.BLACK, color=Colors.WHITE),
                         mou
-                        
-                        
-            ],
-        )
-    )   # حساب تعريفي 
+                    ]
+                )
+            )
+            page.update()
+   # حساب تعريفي 
         if page.route == "profile":
-            current_email = saver.get("current_user_email")
+            current_email = saver.get("current_user_email")  # الإيميل اللي سجل الدخول
             if not current_email:
                 page.go("/")  # لو مفيش مستخدم مسجل دخول ارجع للرئيسية
             else:
                 try:
-                    ref = db.reference("bank_my_wallet")
-                    users = ref.get()
+                    r = requests.get("https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/bank_my_wallet.json")
+                    r.raise_for_status()  # لو حصل خطأ يرمي استثناء
+                    users = r.json()  # البيانات كلها
                 except Exception as e:
                     alert = AlertDialog(
                         title=Text("Firebase connection error"),
@@ -575,7 +621,7 @@ def main(page: Page):
                     alert.open = True
                     page.update()
                 else:
-                    # بيانات المستخدم في كرت
+                    # عرض بيانات المستخدم الحالي
                     card_view = Card(
                         elevation=8,
                         content=Container(
@@ -605,9 +651,9 @@ def main(page: Page):
                         saver.save("current_user_email", None)
                         page.go("/")
 
-                    logout_btn = Row ([ElevatedButton("Sign Out", bgcolor=Colors.RED, on_click=sign_out, width=200)],alignment=MainAxisAlignment.CENTER)
+                    logout_btn = Row([ElevatedButton("Sign Out", bgcolor=Colors.RED, on_click=sign_out, width=200)], alignment=MainAxisAlignment.CENTER)
 
-                    # عرض الصفحة
+                    # إضافة العرض للبروفايل
                     page.views.append(
                         View(
                             "profile",
@@ -623,7 +669,9 @@ def main(page: Page):
                             ]
                         )
                     )
-                    page.update()
+            page.update()
+
+
 
 
         # الدعم 
@@ -794,15 +842,14 @@ American Express
         
         # صفحة انشاء الفيزا 
         if page.route == "visa":
-            global tf1, tf2, tf3  # إعلان global هنا بعد التأكد من تعريف المتغيرات
-            # نص توضيحي
+            global tf1, tf2, tf3
             txt3 = Text(
                 "The card that came out of the bot and put it here",
                 text_align="center",
                 size=15.5,
                 color='#E8D04A'
             )
-            
+
             # الحقول
             tf1 = TextField(
                 label="Card Number",
@@ -825,7 +872,6 @@ American Express
                 max_length=5
             )
 
-            # دالة Alert عامة
             def alert_dialog(message):
                 def close_alert(e):
                     alert.open = False
@@ -839,7 +885,7 @@ American Express
                 alert.open = True
                 page.update()
 
-            # فورمات الكارد: كل 4 أرقام مع مسافة
+            # فورمات الكارد
             def card_change(e):
                 val = tf1.value.replace(" ", "")
                 if val != "" and not val.isdigit():
@@ -850,18 +896,13 @@ American Express
                 tf1.value = " ".join([val[i:i+4] for i in range(0, len(val), 4)])
                 page.update()
 
-            # CVV: أرقام فقط
             def cvv_change(e):
-                global val1
                 val = tf2.value
                 if val != "" and not val.isdigit():
                     alert_dialog("Only numbers allowed in CVV")
                     tf2.value = ""
-                    val1 = tf1.value
                     page.update()
-                    return
 
-            # EXP: MM/YY، إضافة "/" تلقائياً بعد أول رقمين
             def exp_change(e):
                 val = tf3.value.replace("/", "")
                 if val != "" and not val.isdigit():
@@ -878,7 +919,7 @@ American Express
             tf2.on_change = cvv_change
             tf3.on_change = exp_change
 
-            # حفظ الكارد
+            # حفظ الكارد باستخدام requests
             def save12(e):
                 if len(tf1.value.replace(" ", "")) < 16:
                     alert_dialog("Enter the correct card number, it must be 16 digits")
@@ -889,35 +930,28 @@ American Express
                 if len(tf3.value) < 5 or "/" not in tf3.value:
                     alert_dialog("Enter the correct EXP number in MM/YY format")
                     return
-                # 5) إضافة البيانات في Firebase
-                ref = db.reference("cart_cvv_exp")
-                ref.push({
-                    "cart": tf1.value,
-                    "cvv": tf2.value,
-                    "exp": tf3.value
-                })
-                page.go("main1")
-                page.update()
+
+                try:
+                    data = {
+                        "cart": tf1.value,
+                        "cvv": tf2.value,
+                        "exp": tf3.value
+                    }
+                    url = "https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/cart_cvv_exp.json"
+                    r = requests.post(url, json=data)
+                    r.raise_for_status()
+                    page.go("main1")
+                    page.update()
+                except Exception as ex:
+                    alert_dialog(f"Error saving card: {ex}")
 
             # الأزرار
-            bn1 = Row(
-                [ElevatedButton("Create Card", width=150, height=50, on_click=save12)],
-                alignment=MainAxisAlignment.CENTER
-            )
+            bn1 = Row([ElevatedButton("Create Card", width=150, height=50, on_click=save12)], alignment=MainAxisAlignment.CENTER)
+            bn2 = Row([ElevatedButton("Enter the bot to get the card", width=250, bgcolor='#E8D04A', color="white",
+                                    on_click=lambda e: webbrowser.open("https://t.me/bank_my_wallet_bot"))], alignment=MainAxisAlignment.CENTER)
+            bn3 = Row([ElevatedButton("Return to the login page", width=250, bgcolor='#E8D04A', color="white",
+                                    on_click=lambda e: page.go("/"))], alignment=MainAxisAlignment.CENTER)
 
-            bn2 = Row(
-                [ElevatedButton("Enter the bot to get the card", width=250, bgcolor='#E8D04A', color="white",
-                                on_click=lambda e: webbrowser.open("https://t.me/bank_my_wallet_bot"))],
-                alignment=MainAxisAlignment.CENTER
-            )
-
-            bn3 = Row(
-                [ElevatedButton("Return to the login page", width=250, bgcolor='#E8D04A', color="white",
-                                on_click=lambda e: page.go("/"))],
-                alignment=MainAxisAlignment.CENTER
-            )
-
-            # إضافة الـ View
             page.views.append(
                 View(
                     "visa",
@@ -938,7 +972,6 @@ American Express
                     ]
                 )
             )
-
         page.update()
 
 
