@@ -11,6 +11,7 @@ import time
 import webbrowser
 import firebase_admin
 from firebase_admin import credentials, db
+import os
 import requests
 import tempfile
 
@@ -505,84 +506,99 @@ def main(page: Page):
            )
          #صفحة الرئيسية (1) 
         if page.route == "main1":
-            current_email = saver.get("current_user_email")
-            card_data = None
+            card1 = Card(
+    elevation=8,
+    content=Container(
+        width=360,
+        height=210,
+        border_radius=20,
+        padding=0,
+        gradient=LinearGradient(
+            begin=alignment.top_left,
+            end=alignment.bottom_right,
+            colors=[Colors.BLUE_600, Colors.BLUE_900],
+        ),
+        content=Stack(
+            controls=[
 
-            if current_email:
-                try:
-                    url = "https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/cart_cvv_exp.json"
-                    r = requests.get(url)
-                    r.raise_for_status()
-                    cards = r.json()  # dict من Firebase
-                    if cards:
-                        for key, val in cards.items():
-                            if val.get("email") == current_email:
-                                card_data = val
-                                break
-                except Exception as e:
-                    alert = AlertDialog(
-                        title=Text("Error fetching card"),
-                        content=Text(str(e)),
-                        actions=[TextButton("Ok", on_click=lambda e: setattr(alert, "open", False))]
-                    )
-                    page.overlay.append(alert)
-                    alert.open = True
-                    page.update()
+                # الكلمة اللي فوق خالص
+                Text(
+                    "My Wallet Card",
+                    size=16,
+                    weight="bold",
+                    color=Colors.WHITE,
+                    top=15,
+                    left=20
+                ),
 
-            # إذا موجود الكارد للمستخدم
-            if card_data:
-                card1 = Card(
-                    elevation=8,
-                    content=Container(
-                        width=360,
-                        height=210,
-                        border_radius=20,
-                        padding=0,
-                        gradient=LinearGradient(
-                            begin=alignment.top_left,
-                            end=alignment.bottom_right,
-                            colors=[Colors.BLUE_600, Colors.BLUE_900],
-                        ),
-                        content=Stack(
-                            controls=[
-                                Text("My Wallet Card", size=16, weight="bold", color=Colors.WHITE, top=15, left=20),
-                                Text(card_data["cart"], size=26, weight="bold", color=Colors.WHITE, top=85, left=20),
-                                Text(f"EXP: {card_data['exp']}", size=14, weight="bold", color=Colors.WHITE, bottom=20, right=20),
-                                Text(f"CVV: {card_data['cvv']}", size=14, weight="bold", color=Colors.WHITE, bottom=20, left=20)
-                            ]
-                        )
-                    )
+                # رقم الفيزا في النص
+                Text(
+                    "5084 4574 4644 4974",
+                    size=26,
+                    weight="bold",
+                    color=Colors.WHITE,
+                    top=85,
+                    left=20
+                ),
+
+                # EXP تحت خالص يمين
+                Text(
+                    "EXP: 08/30",
+                    size=14,
+                    weight="bold",
+                    color=Colors.WHITE,
+                    bottom=20,
+                    right=20
+                ),
+
+                # CVV تحت خالص شمال
+                Text(
+                    "CVV: 565",
+                    size=14,
+                    weight="bold",
+                    color=Colors.WHITE,
+                    bottom=20,
+                    left=20
                 )
-            else:
-                # إذا لا يوجد كارد للمستخدم، يظهر فارغ أو نص توضيحي
-                card1 = Card(
-                    elevation=8,
-                    content=Container(
-                        width=360,
-                        height=210,
-                        border_radius=20,
-                        padding=0,
-                        gradient=LinearGradient(
-                            begin=alignment.top_left,
-                            end=alignment.bottom_right,
-                            colors=[Colors.BLUE_300, Colors.BLUE_600],
-                        ),
-                        content=Text("No card found. Go create one in 'Visa'", color=Colors.WHITE, size=20, text_align="center")
-                    )
-                )
+            ]
+        )
+    )
+)
 
-            mou = Row([card1], alignment=MainAxisAlignment.CENTER)
+            mou = Row([card1 ], alignment=MainAxisAlignment.CENTER,)
+            
             page.views.append(
                 View(
-                    "main1",
+                    "Bank My Wallet",
                     [
-                        AppBar(title=Text("Bank My Wallet"), center_title=True, bgcolor=Colors.BLACK, color=Colors.WHITE),
+                        AppBar(title=Text("Bank My Wallet"),
+                               center_title=True,
+                               bgcolor=Colors.BLACK,
+                               color=Colors.WHITE,
+                               leading=Container(),
+                               actions=[
+                                    PopupMenuButton(
+                                        items=[
+                                            PopupMenuItem(text="Profile",on_click=lambda _:page.go("profile")),
+                                            PopupMenuItem(text="Settings",on_click=lambda _: page.go("settings")),
+                                            PopupMenuItem(text="Who are we", on_click=lambda _:page.go("who_are_we")),
+                                            PopupMenuItem(),
+                                            PopupMenuItem(text="Support",on_click=lambda _:page.go("support")),                       
+                                            PopupMenuItem()
+                                            
+
+                                        ]
+                                 )
+                                    
+                            ]
+                               
+                               ),
                         mou
-                    ]
-                )
-            )
-            page.update()
-   # حساب تعريفي 
+                        
+                        
+            ],
+        )
+    )   # حساب تعريفي 
         if page.route == "profile":
             current_email = saver.get("current_user_email")  # الإيميل اللي سجل الدخول
             if not current_email:
