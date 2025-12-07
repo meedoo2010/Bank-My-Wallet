@@ -67,11 +67,6 @@ def send_email(to: str, subject: str, body: str):
 
 
 def main(page: Page):
-    page.title = "Bank My Wallet"
-    page.window.width = 390
-    page.window.height = 740
-    page.window.top = 45
-    page.window.left = 570
     page.theme_mode = ThemeMode.LIGHT
     page.scroll = 'auto'
     saver = Saver(page)
