@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 import os
 import threading
 import time
-import webbrowser
 import firebase_admin
 from firebase_admin import credentials, db
 import os
@@ -80,7 +79,23 @@ def main(page: Page):
     if saved_theme == "dark":
         page.theme_mode = ThemeMode.DARK
 
+    def email_exists(email):
+        try:
+            r = requests.get(DB_URL)
+            if r.status_code != 200:
+                return False
 
+            users = r.json()
+            if not users or not isinstance(users, dict):
+                return False
+
+            for _, data in users.items():
+                if isinstance(data, dict) and data.get("email") == email:
+                    return True
+
+            return False
+        except:
+            return False
 
     def add1(e):
         # 1) فحص الخانات الفاضية
@@ -107,7 +122,23 @@ def main(page: Page):
             alert.open = True
             page.update()
             return
+        # فحص لو الحساب موجود بالفعل
+        if email_exists(signup_email.value):
+            def close_dialog(ev):
+                alert.open = False
+                page.update()
+            alert = AlertDialog(
+                title=Text("Account already exists"),
+                content=Text("This email is already registered. Please login."),
+                actions=[TextButton("Ok", on_click=close_dialog)],
+                actions_alignment=MainAxisAlignment.END,
+            )
+            page.overlay.append(alert)
+            alert.open = True
+            page.update()
+            return
 
+        
         # 2) فحص الباسورد
         if signup_pass.value != signup_confirm.value:
             def close_dialog(ev):
@@ -206,15 +237,15 @@ def main(page: Page):
                 [
                     AppBar(title=Text("Bank My Wallet",),
                            center_title=True,
-                           bgcolor=Colors.BLACK,
-                           color='#E8D04A',
+                           bgcolor='#E8D04A',
+                           color=Colors.BLACK,
                            actions=[IconButton(Icons.SETTINGS,on_click=lambda _: page.go("setting"))]
                            ),
                     Row([
                         Image(src="register1.gif", width=280),
                     ], alignment=MainAxisAlignment.CENTER),
                     Row([
-                        Text("Number of registered customers : 0", size=18, color=Colors.PURPLE),
+                        Text("Number of registered customers : 0", size=18, color=Colors.BLACK),
                     ], alignment=MainAxisAlignment.CENTER),
                     
                     
@@ -223,13 +254,13 @@ def main(page: Page):
                             ElevatedButton(
                                 "Login",
                                 width=170,
-                                style=ButtonStyle(bgcolor="purple", color="white"),
+                                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
                                 on_click=lambda _: page.go("login"),
                             ),
                             ElevatedButton(
                                 "Create account",
                                 width=170,
-                                style=ButtonStyle(bgcolor="purple", color="white"),
+                                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
                                 on_click=lambda _: page.go("signup"),
                             ),
                         ],
@@ -309,13 +340,13 @@ def main(page: Page):
             login_button = ElevatedButton(
                 "Login",
                 width=170,
-                style=ButtonStyle(bgcolor="purple", color="white"),
+                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
                 on_click=user_found,
             )
             go_signup_btn = ElevatedButton(
                 "I don't have an account",
                 width=170,
-                style=ButtonStyle(bgcolor="purple", color="white"),
+                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
                 on_click=lambda _: page.go("signup"),
             )
 
@@ -323,7 +354,7 @@ def main(page: Page):
                 View(
                     "login",
                     [
-                        AppBar(title=Text("Bank My Wallet"), bgcolor=Colors.BLACK, color='#E8D04A',center_title=True,),
+                        AppBar(title=Text("Bank My Wallet"), bgcolor='#E8D04A', color=Colors.BLACK,center_title=True,),
                         Text("Login", size=24, text_align="center"),
                         email_field,
                         password_field,
@@ -430,20 +461,20 @@ def main(page: Page):
             send_OTP_btn = ElevatedButton(
                 "Send OTP",
                 width=175,
-                style=ButtonStyle(bgcolor="purple", color="white"),
+                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
                 on_click=send_otp_click,
             )
 
             signup_button = ElevatedButton(
                 "Create account",
                 width=170,
-                style=ButtonStyle(bgcolor="purple", color="white"),
+                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
                 on_click=add1
             )
             go_login_btn = ElevatedButton(
                 "Login",
                 width=170,
-                style=ButtonStyle(bgcolor="purple", color="white"),
+                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
                 on_click=lambda _: page.go("login"),
             )
             
@@ -455,7 +486,7 @@ def main(page: Page):
                 View(
                     "signup",
                     [
-                        AppBar(title=Text("Bank My Wallet"), bgcolor=Colors.BLACK, color='#E8D04A',center_title=True,),
+                        AppBar(title=Text("Bank My Wallet"), bgcolor='#E8D04A', color=Colors.BLACK,center_title=True,),
                         Text("Create a new account", size=24, text_align="center"),
                         signup_name,
                         signup_email,
@@ -499,108 +530,184 @@ def main(page: Page):
                 View(
                     "setting",
                     [
-                       AppBar(title=Text("Settings"), bgcolor=Colors.BLACK, color=Colors.WHITE, center_title=True,),
+                       AppBar(title=Text("Settings"), bgcolor='#E8D04A', color=Colors.BLACK, center_title=True,),
                        Column([btn], alignment=MainAxisAlignment.CENTER)
                    ]
                )
            )
          #صفحة الرئيسية (1) 
         if page.route == "main1":
-            card1 = Card(
-    elevation=8,
-    content=Container(
-        width=360,
-        height=210,
-        border_radius=20,
-        padding=0,
-        gradient=LinearGradient(
-            begin=alignment.top_left,
-            end=alignment.bottom_right,
-            colors=[Colors.BLUE_600, Colors.BLUE_900],
-        ),
-        content=Stack(
-            controls=[
-
-                # الكلمة اللي فوق خالص
-                Text(
-                    "My Wallet Card",
-                    size=16,
-                    weight="bold",
-                    color=Colors.WHITE,
-                    top=15,
-                    left=20
-                ),
-
-                # رقم الفيزا في النص
-                Text(
-                    "5084 4574 4644 4974",
-                    size=26,
-                    weight="bold",
-                    color=Colors.WHITE,
-                    top=85,
-                    left=20
-                ),
-
-                # EXP تحت خالص يمين
-                Text(
-                    "EXP: 08/30",
-                    size=14,
-                    weight="bold",
-                    color=Colors.WHITE,
-                    bottom=20,
-                    right=20
-                ),
-
-                # CVV تحت خالص شمال
-                Text(
-                    "CVV: 565",
-                    size=14,
-                    weight="bold",
-                    color=Colors.WHITE,
-                    bottom=20,
-                    left=20
+            # ================= HEADER =================
+            header = Container(
+                padding=20,
+                bgcolor="#0f172a",
+                content=Row(
+                    alignment=MainAxisAlignment.SPACE_BETWEEN,
+                    controls=[
+                        Column(
+                            spacing=3,
+                            controls=[
+                                Text("MY WALLET", size=26, weight="bold", color=Colors.WHITE),
+                                Text("Secure digital banking", size=12, color=Colors.WHITE70),
+                            ],
+                        ),
+                        IconButton(
+                            icon=Icons.ACCOUNT_CIRCLE,
+                            icon_color=Colors.CYAN,
+                            on_click=lambda e: page.go("profile")
+                        )
+                    ]
                 )
-            ]
-        )
-    )
-)
+            )
 
-            mou = Row([card1 ], alignment=MainAxisAlignment.CENTER,)
-            
-            page.views.append(
-                View(
-                    "Bank My Wallet",
-                    [
-                        AppBar(title=Text("Bank My Wallet"),
-                               center_title=True,
-                               bgcolor=Colors.BLACK,
-                               color=Colors.WHITE,
-                               leading=Container(),
-                               actions=[
-                                    PopupMenuButton(
-                                        items=[
-                                            PopupMenuItem(text="Profile",on_click=lambda _:page.go("profile")),
-                                            PopupMenuItem(text="Settings",on_click=lambda _: page.go("settings")),
-                                            PopupMenuItem(text="Who are we", on_click=lambda _:page.go("who_are_we")),
-                                            PopupMenuItem(),
-                                            PopupMenuItem(text="Support",on_click=lambda _:page.go("support")),                       
-                                            PopupMenuItem(),
-                                            PopupMenuItem(text="Create cart",on_click=lambda _:page.go("visa")),
-                                            
-                                            
-
-                                        ]
-                                 )
-                                    
+            # ================= WALLET CARD =================
+            wallet_card = Container(
+                width=360,
+                height=210,
+                padding=20,
+                border_radius=28,
+                gradient=LinearGradient(
+                    begin=alignment.top_left,
+                    end=alignment.bottom_right,
+                    colors=["#2563eb", "#1e40af"],
+                ),
+                content=Column(
+                    spacing=15,
+                    controls=[
+                        Row(
+                            alignment=MainAxisAlignment.SPACE_BETWEEN,
+                            controls=[
+                                Text("My Wallet Card", color=Colors.WHITE70),
+                                Icon(Icons.WIFI, color=Colors.WHITE)
                             ]
-                               
-                               ),
-                        mou
-                        
-                        
-            ],
-        )
-    )   # حساب تعريفي 
+                        ),
+                        Text(
+                            "5084 4598 7852 9632",
+                            size=24,
+                            weight="bold",
+                            color=Colors.WHITE
+                        ),
+                        Row(
+                            alignment=MainAxisAlignment.SPACE_BETWEEN,
+                            controls=[
+                                Column([
+                                    Text("CVV", size=12, color=Colors.WHITE70),
+                                    Text("423", size=18, weight="bold", color=Colors.WHITE),
+                                ]),
+                                Column([
+                                    Text("Valid", size=12, color=Colors.WHITE70),
+                                    Text("08/30", size=16, color=Colors.WHITE),
+                                ])
+                            ]
+                        )
+                    ]
+                )
+            )
+
+            # ================= ACTION BUTTON =================
+            def action_button(title, icon, route):
+                return Container(
+                    width=90,
+                    height=90,
+                    border_radius=20,
+                    bgcolor="#111827",
+                    ink=True,
+                    on_click=lambda e: page.go(route),
+                    content=Column(
+                        alignment=MainAxisAlignment.CENTER,
+                        horizontal_alignment=CrossAxisAlignment.CENTER,
+                        spacing=6,
+                        controls=[
+                            Icon(icon, size=26, color=Colors.CYAN),
+                            Text(title, size=12, color=Colors.WHITE)
+                        ]
+                    )
+                )
+
+            actions = Row(
+                alignment=MainAxisAlignment.SPACE_EVENLY,
+                controls=[
+                    action_button("Send", Icons.SEND, "send"),
+                    action_button("Receive", Icons.DOWNLOAD, "receive"),
+                    action_button("History", Icons.HISTORY, "history"),
+                ]
+            )
+
+            # ================= RECENT SECTION =================
+            recent = Container(
+                padding=20,
+                content=Column(
+                    spacing=10,
+                    controls=[
+                        Text("Recent activity", size=16, weight="bold", color=Colors.WHITE),
+                        Container(
+                            padding=15,
+                            border_radius=15,
+                            bgcolor="#0f172a",
+                            content=Row(
+                                alignment=MainAxisAlignment.SPACE_BETWEEN,
+                                controls=[
+                                    Text("Transfer to Ahmed", color=Colors.WHITE),
+                                    Text("- $120", color=Colors.RED_400),
+                                ]
+                            )
+                        ),
+                        Container(
+                            padding=15,
+                            border_radius=15,
+                            bgcolor="#0f172a",
+                            content=Row(
+                                alignment=MainAxisAlignment.SPACE_BETWEEN,
+                                controls=[
+                                    Text("Salary", color=Colors.WHITE),
+                                    Text("+ $2,500", color=Colors.GREEN_400),
+                                ]
+                            )
+                        ),
+                    ]
+                )
+            )
+
+            # ================= PAGE =================
+            main_view = View(
+                "main1",
+                controls=[
+                    Column(
+                        spacing=25,
+                        controls=[
+                            header,
+                            Row([wallet_card], alignment=MainAxisAlignment.CENTER),
+                            actions,
+                            recent
+                        ]
+                    )
+                ]
+            )
+
+            # ================= POPUP MENU =================
+            main_view.appbar = AppBar(
+                title=Text("Bank My Wallet"),
+                center_title=True,
+                bgcolor=Colors.BLACK,
+                color=Colors.WHITE,
+                leading=Container(),
+                actions=[
+                    PopupMenuButton(
+                        items=[
+                            PopupMenuItem(text="Settings", on_click=lambda _: page.go("settings")),
+                            PopupMenuItem(text="Who are we", on_click=lambda _: page.go("who_are_we")),
+                            PopupMenuItem(),
+                            PopupMenuItem(text="Support", on_click=lambda _: page.go("support")),
+                            PopupMenuItem(),
+                            PopupMenuItem(text="Create card", on_click=lambda _: page.go("visa")),
+                        ]
+                    )
+                ]
+            )
+
+            page.views.append(main_view)
+
+   # حساب تعريفي 
         if page.route == "profile":
             current_email = saver.get("current_user_email")  # الإيميل اللي سجل الدخول
             if not current_email:
@@ -720,9 +827,7 @@ def main(page: Page):
             )       
             number = "+201006861708"
             def open_whatsapp(e):
-                webbrowser.open("""
-                                https://wa.me/201006861708?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84%20%D9%85%D8%B9%D9%83%D9%85%20%D8%A8%D8%AE%D8%B5%D9%88%D8%B5%20%D8%A7%D9%84%D8%AF%D8%B9%D9%85%20%D8%A3%D9%88%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%AD%D9%88%D9%84%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%83%D9%85
-                                """)
+                page.launch_url("https://wa.me/201006861708?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84%20%D9%85%D8%B9%D9%83%D9%85%20%D8%A8%D8%AE%D8%B5%D9%88%D8%B5%20%D8%A7%D9%84%D8%AF%D8%B9%D9%85%20%D8%A3%D9%88%20%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%AD%D9%88%D9%84%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%83%D9%85")
 
             image1 = Row([
                 Image(src="qr_code.png",width=200)
@@ -736,7 +841,7 @@ def main(page: Page):
                     on_click=open_whatsapp
                 )
             ],alignment=MainAxisAlignment.CENTER)
-            txt1 = Text("____________________________________________________________________________________________________________________")
+            txt1 = Row ([Text("_______________________________________________")],alignment=MainAxisAlignment.CENTER)
             txt2 = Text("To contact customer service, call this number",size=16)
             
             card3 = Card(
@@ -785,7 +890,7 @@ def main(page: Page):
             ],alignment=MainAxisAlignment.CENTER, rtl=True)
             
             def open_website(o):
-                webbrowser.open("https://rofy-m.gt.tc")
+                page.launch_url("https://rofy-m.gt.tc")
             tbtn = Row([
                 TextButton("للمزيد اضغط هنا",on_click=open_website)
             ],alignment=MainAxisAlignment.CENTER, rtl=True)
@@ -966,7 +1071,7 @@ American Express
             # الأزرار
             bn1 = Row([ElevatedButton("Create Card", width=150, height=50, on_click=save12)], alignment=MainAxisAlignment.CENTER)
             bn2 = Row([ElevatedButton("Enter the bot to get the card", width=250, bgcolor='#E8D04A', color="white",
-                                    on_click=lambda e: webbrowser.open("https://t.me/bank_my_wallet_bot"))], alignment=MainAxisAlignment.CENTER)
+                                    on_click=lambda e: page.launch_url("https://t.me/bank_my_wallet_bot"))], alignment=MainAxisAlignment.CENTER)
             bn3 = Row([ElevatedButton("Return to the login page", width=250, bgcolor='#E8D04A', color="white",
                                     on_click=lambda e: page.go("/"))], alignment=MainAxisAlignment.CENTER)
 
@@ -991,7 +1096,7 @@ American Express
                 )
             )
         page.update()
-
+    
 
     def page_go(view):
         page.views.pop()
