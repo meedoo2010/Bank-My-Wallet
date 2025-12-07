@@ -695,6 +695,7 @@ def main(page: Page):
                     PopupMenuButton(
                         items=[
                             PopupMenuItem(text="Settings", on_click=lambda _: page.go("settings")),
+                            PopupMenuItem(),
                             PopupMenuItem(text="Who are we", on_click=lambda _: page.go("who_are_we")),
                             PopupMenuItem(),
                             PopupMenuItem(text="Support", on_click=lambda _: page.go("support")),
