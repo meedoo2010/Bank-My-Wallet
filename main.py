@@ -1102,4 +1102,4 @@ American Express
     page.on_view_pop = page_go
     page.go(page.route)
 
-app(main)
+app(main,assets_dir='assets/')
