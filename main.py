@@ -8,11 +8,8 @@ from dotenv import load_dotenv
 import os
 import threading
 import time
-import firebase_admin
-from firebase_admin import credentials, db
 import os
 import requests
-import tempfile
 
 DB_URL = "https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/bank_my_wallet.json"
 
@@ -36,16 +33,6 @@ class Saver:
 
 
 
-#cred = credentials.Certificate("serviceAccountKey.json")
-#
-## 2- نبدأ التطبيق
-#firebase_admin.initialize_app(cred, {
-#    "databaseURL": "https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/"
-#})
-
-
-
-
 
 load_dotenv()
 
@@ -66,14 +53,30 @@ def send_email(to: str, subject: str, body: str):
 
 
 
+def wallet_id():
+    global wallet_ID
+    nu1 = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=2))
+    nu2 = ''.join(random.choices('0123456789', k=4))
+    nu3 = ''.join(random.choices('0123456789', k=2))
+    return f"{nu1}-{nu2}-{nu3}"
+wallet_ID = wallet_id()
+
 def main(page: Page):
+    page.title = "Bank My Wallet"
+    page.window.width = 390
+    page.window.height = 740
+    page.window.top = 45
+    page.window.left = 570
     page.theme_mode = ThemeMode.LIGHT
     page.scroll = 'auto'
     saver = Saver(page)
     saved_theme = saver.get("theme")
     if saved_theme == "dark":
         page.theme_mode = ThemeMode.DARK
+    
 
+
+    
     def email_exists(email):
         try:
             r = requests.get(DB_URL)
@@ -186,7 +189,9 @@ def main(page: Page):
             "email": signup_email.value,
             "password1": signup_pass.value,
             "password2": signup_confirm.value,
-            "address": signup_address.value
+            "address": signup_address.value,
+            "governorate": signup_governorate.value,
+            "wallet_id": wallet_ID
         }
 
         try:
@@ -232,15 +237,12 @@ def main(page: Page):
                 [
                     AppBar(title=Text("Bank My Wallet",),
                            center_title=True,
-                           bgcolor='#E8D04A',
-                           color=Colors.BLACK,
+                           bgcolor=Colors.BLACK,
+                           color='#E8D04A',
                            actions=[IconButton(Icons.SETTINGS,on_click=lambda _: page.go("setting"))]
                            ),
                     Row([
                         Image(src="register1.gif", width=280),
-                    ], alignment=MainAxisAlignment.CENTER),
-                    Row([
-                        Text("Number of registered customers : 0", size=18, color=Colors.BLACK),
                     ], alignment=MainAxisAlignment.CENTER),
                     
                     
@@ -249,13 +251,13 @@ def main(page: Page):
                             ElevatedButton(
                                 "Login",
                                 width=170,
-                                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
+                                style=ButtonStyle(bgcolor=Colors.BLACK, color='#E8D04A'),
                                 on_click=lambda _: page.go("login"),
                             ),
                             ElevatedButton(
                                 "Create account",
                                 width=170,
-                                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
+                                style=ButtonStyle(bgcolor=Colors.BLACK, color='#E8D04A'),
                                 on_click=lambda _: page.go("signup"),
                             ),
                         ],
@@ -335,13 +337,13 @@ def main(page: Page):
             login_button = ElevatedButton(
                 "Login",
                 width=170,
-                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
+                style=ButtonStyle(bgcolor=Colors.BLACK, color='#E8D04A'),
                 on_click=user_found,
             )
             go_signup_btn = ElevatedButton(
                 "I don't have an account",
                 width=170,
-                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
+                style=ButtonStyle(bgcolor=Colors.BLACK, color='#E8D04A'),
                 on_click=lambda _: page.go("signup"),
             )
 
@@ -349,7 +351,7 @@ def main(page: Page):
                 View(
                     "login",
                     [
-                        AppBar(title=Text("Bank My Wallet"), bgcolor='#E8D04A', color=Colors.BLACK,center_title=True,),
+                        AppBar(title=Text("Bank My Wallet"), bgcolor=Colors.BLACK, color='#E8D04A',center_title=True,),
                         Text("Login", size=24, text_align="center"),
                         email_field,
                         password_field,
@@ -364,6 +366,7 @@ def main(page: Page):
         global signup_confirm
         global signup_OTP
         global signup_address
+        global signup_governorate
         # صفحة إنشاء الحساب
         if page.route == "signup":
             signup_name = TextField(label="Name")
@@ -456,20 +459,20 @@ def main(page: Page):
             send_OTP_btn = ElevatedButton(
                 "Send OTP",
                 width=175,
-                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
+                style=ButtonStyle(bgcolor=Colors.BLACK, color='#E8D04A'),
                 on_click=send_otp_click,
             )
 
             signup_button = ElevatedButton(
                 "Create account",
                 width=170,
-                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
+                style=ButtonStyle(bgcolor=Colors.BLACK, color='#E8D04A'),
                 on_click=add1
             )
             go_login_btn = ElevatedButton(
                 "Login",
                 width=170,
-                style=ButtonStyle(bgcolor='#E8D04A', color=Colors.BLACK),
+                style=ButtonStyle(bgcolor=Colors.BLACK, color='#E8D04A'),
                 on_click=lambda _: page.go("login"),
             )
             
@@ -481,7 +484,7 @@ def main(page: Page):
                 View(
                     "signup",
                     [
-                        AppBar(title=Text("Bank My Wallet"), bgcolor='#E8D04A', color=Colors.BLACK,center_title=True,),
+                        AppBar(title=Text("Bank My Wallet"), bgcolor=Colors.BLACK, color='#E8D04A',center_title=True,),
                         Text("Create a new account", size=24, text_align="center"),
                         signup_name,
                         signup_email,
@@ -525,7 +528,7 @@ def main(page: Page):
                 View(
                     "setting",
                     [
-                       AppBar(title=Text("Settings"), bgcolor='#E8D04A', color=Colors.BLACK, center_title=True,),
+                       AppBar(title=Text("Settings"), bgcolor=Colors.BLACK, color='#E8D04A', center_title=True,),
                        Column([btn], alignment=MainAxisAlignment.CENTER)
                    ]
                )
@@ -542,8 +545,8 @@ def main(page: Page):
                         Column(
                             spacing=3,
                             controls=[
-                                Text("MY WALLET", size=26, weight="bold", color=Colors.WHITE),
-                                Text("Secure digital banking", size=12, color=Colors.WHITE70),
+                                Text("MY WALLET", size=26, weight="bold", color='#E8D04A'),
+                                Text("Secure digital banking", size=12, color='#E8D04A'),
                             ],
                         ),
                         IconButton(
@@ -564,7 +567,7 @@ def main(page: Page):
                 gradient=LinearGradient(
                     begin=alignment.top_left,
                     end=alignment.bottom_right,
-                    colors=["#2563eb", "#1e40af"],
+                    colors=['#E8D04A', '#E8D04A'],
                 ),
                 content=Column(
                     spacing=15,
@@ -572,7 +575,7 @@ def main(page: Page):
                         Row(
                             alignment=MainAxisAlignment.SPACE_BETWEEN,
                             controls=[
-                                Text("My Wallet Card", color=Colors.WHITE70),
+                                Text("My Wallet Card", color=Colors.BLACK),
                                 Icon(Icons.WIFI, color=Colors.WHITE)
                             ]
                         ),
@@ -580,18 +583,18 @@ def main(page: Page):
                             "5084 4598 7852 9632",
                             size=24,
                             weight="bold",
-                            color=Colors.WHITE
+                            color=Colors.BLACK
                         ),
                         Row(
                             alignment=MainAxisAlignment.SPACE_BETWEEN,
                             controls=[
                                 Column([
-                                    Text("CVV", size=12, color=Colors.WHITE70),
-                                    Text("423", size=18, weight="bold", color=Colors.WHITE),
+                                    Text("CVV", size=12, color=Colors.BLACK),
+                                    Text("423", size=18, weight="bold", color=Colors.BLACK),
                                 ]),
                                 Column([
-                                    Text("Valid", size=12, color=Colors.WHITE70),
-                                    Text("08/30", size=16, color=Colors.WHITE),
+                                    Text("Valid", size=12, color=Colors.BLACK),
+                                    Text("08/30", size=16, color=Colors.BLACK),
                                 ])
                             ]
                         )
@@ -684,7 +687,7 @@ def main(page: Page):
                 title=Text("Bank My Wallet"),
                 center_title=True,
                 bgcolor=Colors.BLACK,
-                color=Colors.WHITE,
+                color='#E8D04A',
                 leading=Container(),
                 actions=[
                     PopupMenuButton(
@@ -694,8 +697,6 @@ def main(page: Page):
                             PopupMenuItem(text="Who are we", on_click=lambda _: page.go("who_are_we")),
                             PopupMenuItem(),
                             PopupMenuItem(text="Support", on_click=lambda _: page.go("support")),
-                            PopupMenuItem(),
-                            PopupMenuItem(text="Create card", on_click=lambda _: page.go("visa")),
                         ]
                     )
                 ]
@@ -753,14 +754,14 @@ def main(page: Page):
                             gradient=LinearGradient(
                                 begin=alignment.top_left,
                                 end=alignment.bottom_right,
-                                colors=[Colors.BLUE, Colors.BLUE],
+                                colors=['#E8D04A', '#E8D04A'],
                             ),
                             content=Column(
                                 [
-                                    Text(f"Name: {user_data.get('name','')}", size=18, weight="bold", color=Colors.WHITE),
-                                    Text(f"Email: {user_data.get('email','')}", size=16, color=Colors.WHITE),
-                                    Text(f"Phone: {user_data.get('phone','')}", size=16, color=Colors.WHITE),
-                                    Text(f"Address: {user_data.get('address','')}", size=16, color=Colors.WHITE),
+                                    Text(f"Name: {user_data.get('name','')}", size=18, weight="bold", color=Colors.BLACK),
+                                    Text(f"Email: {user_data.get('email','')}", size=16, color=Colors.BLACK),
+                                    Text(f"Phone: {user_data.get('phone','')}", size=16, color=Colors.BLACK),
+                                    Text(f"Address: {user_data.get('address','')}", size=16, color=Colors.BLACK),
                                 ],
                                 alignment=MainAxisAlignment.START,
                             )
@@ -783,7 +784,7 @@ def main(page: Page):
                                     title=Text("Profile"),
                                     center_title=True,
                                     bgcolor=Colors.BLACK,
-                                    color=Colors.WHITE,
+                                    color='#E8D04A',
                                     leading=IconButton(Icons.ARROW_BACK, on_click=lambda _: page.go("main1"))
                                 ),
                                 Column([card_view, logout_btn], alignment=MainAxisAlignment.CENTER, spacing=20)
@@ -863,7 +864,7 @@ def main(page: Page):
                        AppBar(title=Text("support"),
                               center_title=True,
                               bgcolor=Colors.BLACK,
-                              color=Colors.WHITE,
+                              color='#E8D04A',
                               leading=IconButton(Icons.ARROW_BACK,on_click=lambda _: page.go("main1")),
                               ),
                        image1,
@@ -916,7 +917,7 @@ American Express
                        AppBar(title=Text("Who are we"),
                               center_title=True,
                               bgcolor=Colors.BLACK,
-                              color=Colors.WHITE,
+                              color='#E8D04A',
                               leading=IconButton(Icons.ARROW_BACK,on_click=lambda _: page.go("main1")),
                               ),
                        roww,
@@ -952,7 +953,7 @@ American Express
                     [
                        AppBar(title=Text("Settings"),
                               center_title=True,
-                              bgcolor=Colors.BLACK, color=Colors.WHITE,
+                              bgcolor=Colors.BLACK, color='#E8D04A',
                               leading=IconButton(Icons.ARROW_BACK,on_click=lambda _: page.go("main1"))),
                        Column([btn], alignment=MainAxisAlignment.CENTER)
                    ]
@@ -966,7 +967,7 @@ American Express
                 "The card that came out of the bot and put it here",
                 text_align="center",
                 size=15.5,
-                color='#E8D04A'
+                color=Colors.BLACK
             )
 
             # الحقول
@@ -1066,9 +1067,9 @@ American Express
 
             # الأزرار
             bn1 = Row([ElevatedButton("Create Card", width=150, height=50, on_click=save12)], alignment=MainAxisAlignment.CENTER)
-            bn2 = Row([ElevatedButton("Enter the bot to get the card", width=250, bgcolor='#E8D04A', color="white",
+            bn2 = Row([ElevatedButton("Enter the bot to get the card", width=250, bgcolor=Colors.BLACK, color='#E8D04A',
                                     on_click=lambda e: page.launch_url("https://t.me/bank_my_wallet_bot"))], alignment=MainAxisAlignment.CENTER)
-            bn3 = Row([ElevatedButton("Return to the login page", width=250, bgcolor='#E8D04A', color="white",
+            bn3 = Row([ElevatedButton("Return to the login page", width=250, bgcolor=Colors.BLACK, color='#E8D04A',
                                     on_click=lambda e: page.go("/"))], alignment=MainAxisAlignment.CENTER)
 
             page.views.append(
@@ -1079,7 +1080,7 @@ American Express
                             title=Text("Create Card"),
                             center_title=True,
                             bgcolor=Colors.BLACK,
-                            color=Colors.WHITE,
+                            color='#E8D04A',
                             leading=Text("")
                         ),
                         txt3,
@@ -1092,14 +1093,217 @@ American Express
                 )
             )
         page.update()
+        
+        
+        if page.route == "send":
+            send_view = View(
+                "send",
+                bgcolor="#020617",
+                controls=[
+                    AppBar(
+                        title=Text("Send Money", weight="bold"),
+                        center_title=True,
+                        bgcolor=Colors.BLACK,
+                        color='#E8D04A',
+                        leading=IconButton(Icons.ARROW_BACK,on_click=lambda _: page.go("main1"))
+                    ),
+                    Container(
+                        padding=20,
+                        content=Column(
+                            spacing=20,
+                            controls=[
+                                Container(
+                                    padding=20,
+                                    border_radius=25,
+                                    bgcolor="#0f172a",
+                                    content=Column(
+                                        spacing=15,
+                                        controls=[
+                                            Text("Transfer details", size=18, weight="bold"),
+                                            TextField(
+                                                label="Recipient name",
+                                                border_radius=18,
+                                                filled=True,
+                                                bgcolor="#020617",
+                                                color=Colors.WHITE
+                                            ),
+                                            TextField(
+                                                label="Card number",
+                                                border_radius=18,
+                                                filled=True,
+                                                bgcolor="#020617",
+                                                color=Colors.WHITE
+                                            ),
+                                            TextField(
+                                                label="Amount ($)",
+                                                keyboard_type=KeyboardType.NUMBER,
+                                                border_radius=18,
+                                                filled=True,
+                                                bgcolor="#020617",
+                                                color=Colors.WHITE
+                                            ),
+                                            ElevatedButton(
+                                                text="Confirm Transfer",
+                                                bgcolor=Colors.CYAN,
+                                                color=Colors.BLACK,
+                                                height=48
+                                            )
+                                        ]
+                                    )
+                                )
+                            ]
+                        )
+                    )
+                ]
+            )
+            page.views.append(send_view)
+            page.update()
+        
+        if page.route == "receive":
+            # جلب بيانات المستخدم
+            current_email = saver.get("current_user_email")
+            users = None
+            try:
+                r = requests.get("https://bank-my-wallet-default-rtdb.asia-southeast1.firebasedatabase.app/bank_my_wallet.json")
+                if r.status_code == 200:
+                    users = r.json()
+            except:
+                users = None
+
+            user_data = None
+            if users and isinstance(users, dict):
+                for uid, data in users.items():
+                    if not isinstance(data, dict):
+                        continue
+                    if data.get("email") == current_email:
+                        user_data = data
+                        break
+
+            if not user_data:
+                alert = AlertDialog(
+                    title=Text("User not found"),
+                    actions=[TextButton("Ok", on_click=lambda e: page.go("/"))],
+                )
+                page.overlay.append(alert)
+                alert.open = True
+                page.update()
+            else:
+                receive_view = View(
+                    "receive",
+                    bgcolor="#020617",
+                    controls=[
+                        AppBar(
+                            title=Text("Receive Money", weight="bold"),
+                            center_title=True,
+                            bgcolor=Colors.BLACK,
+                            color='#E8D04A',
+                            leading=IconButton(Icons.ARROW_BACK, on_click=lambda _: page.go("main1"))
+                        ),
+                        Container(
+                            padding=20,
+                            alignment=alignment.center,
+                            content=Column(
+                                spacing=25,
+                                horizontal_alignment=CrossAxisAlignment.CENTER,
+                                controls=[
+                                    Container(
+                                        width=220,
+                                        height=220,
+                                        border_radius=30,
+                                        bgcolor="#0f172a",
+                                        alignment=alignment.center,
+                                        content=Icon(
+                                            Icons.QR_CODE_2,
+                                            size=130,
+                                            color=Colors.CYAN
+                                        )
+                                    ),
+                                    Text(
+                                        "Share this QR code\nTo receive payments securely",
+                                        text_align=TextAlign.CENTER,
+                                        color=Colors.WHITE70
+                                    ),
+                                    Container(
+                                        padding=15,
+                                        width=300,
+                                        border_radius=20,
+                                        bgcolor="#0f172a",
+                                        content=Row(
+                                            alignment=MainAxisAlignment.SPACE_BETWEEN,
+                                            controls=[
+                                                Text("Wallet ID"),
+                                                Text(f"{user_data.get('wallet_id','')}", color=Colors.CYAN)
+                                            ]
+                                        )
+                                    )
+                                ]
+                            )
+                        )
+                    ]
+                )
+                page.views.append(receive_view)
+                page.update()
+
+
+        
+        if page.route == "history":
+            def history_item(title, date, amount, color):
+                return Container(
+                    padding=16,
+                    border_radius=18,
+                    bgcolor="#0f172a",
+                    content=Row(
+                        alignment=MainAxisAlignment.SPACE_BETWEEN,
+                        controls=[
+                            Column(
+                                spacing=4,
+                                controls=[
+                                    Text(title, weight="bold"),
+                                    Text(date, size=11, color=Colors.WHITE60),
+                                ]
+                            ),
+                            Text(amount, color=color, weight="bold")
+                        ]
+                    )
+                )
+
+            history_view = View(
+                "history",
+                bgcolor="#020617",
+                controls=[
+                    AppBar(
+                        title=Text("Transaction History", weight="bold"),
+                        center_title=True,
+                        bgcolor=Colors.BLACK,
+                        color='#E8D04A',
+                        leading=IconButton(Icons.ARROW_BACK,on_click=lambda _: page.go("main1"))
+                    ),
+                    Container(
+                        padding=20,
+                        content=Column(
+                            spacing=12,
+                            controls=[
+                                history_item("Transfer to Ahmed", "Today • 12:30 PM", "- $120", Colors.RED_400),
+                                history_item("Salary Payment", "Yesterday • 09:00 AM", "+ $2,500", Colors.GREEN_400),
+                                history_item("Online Shopping", "Oct 1 • 06:10 PM", "- $89", Colors.RED_400),
+                                history_item("Refund", "Sep 28 • 04:00 PM", "+ $45", Colors.GREEN_400),
+                            ]
+                        )
+                    )
+                ]
+            )
+            page.views.append(history_view)
+            page.update()
+
+
     
 
     def page_go(view):
         page.views.pop()
-        page.go(page.views[-1].route)
+        page.go(page.views[-1].route) 
 
     page.on_route_change = route_change
     page.on_view_pop = page_go
     page.go(page.route)
 
-app(main,assets_dir='assets/')
+app(main)
