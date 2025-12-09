@@ -1,8 +1,8 @@
 [project]
 name = "Bank My Wallet"
-version = "1.0.1"
+version = "1.0.0"
 description = "Digital Banking App"
-icon = "assets/icon.jpg"
+icon = "assets/icon.png"
 
 [tool.flet]
 app_name = "Bank-My-Wallet"
